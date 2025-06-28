@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nova Aposta</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #f4f4f4; }
+    .duelo {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin: 10px auto;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 400px;
+    }
+    img { width: 60px; height: 60px; border-radius: 6px; }
+    select { padding: 5px; min-width: 60px; }
+    button { margin: 8px; padding: 10px 16px; border: none; background: #008cff; color: white; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0072d3; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      width: 300px;
+    }
+
+    #pixInfo { font-weight: bold; color: #008000; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>Faça sua Aposta</h2>
+  <div id="containerApostas"></div>
+  <button id="apostarBtn">Apostar</button>
+
+  <!-- Modal -->
+  <div class="modal" id="codigoModal">
+    <div class="modal-content">
+      <h3>✅ Aposta Registrada!</h3>
+      <p><strong>Código:</strong></p>
+      <p id="codigoAposta" style="font-size: 18px;"></p>
+      <button id="btnCopiar">Copiar Código</button>
+      <button id="btnPix">Copiar PIX</button>
+      <button id="btnWhatsapp">Enviar no WhatsApp</button>
+      <button id="btnFechar">Fechar</button>
+      <p id="pixInfo"></p>
+    </div>
+  </div>
+
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA5a-2HzvcljnAfXE7P3ThDnq6m6E568ZA",
+    authDomain: "jogo-60a9e.firebaseapp.com",
+    projectId: "jogo-60a9e",
+    storageBucket: "jogo-60a9e.appspot.com",
+    messagingSenderId: "352852303591",
+    appId: "1:352852303591:web:8083c950047c9026bd8c42",
+    databaseURL: "https://jogo-60a9e-default-rtdb.firebaseio.com/"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const ladoA = [
+    { imagem: "https://via.placeholder.com/80?text=A1" },
+    { imagem: "https://via.placeholder.com/80?text=A2" },
+    { imagem: "https://via.placeholder.com/80?text=A3" },
+    { imagem: "https://via.placeholder.com/80?text=A4" },
+    { imagem: "https://via.placeholder.com/80?text=A5" }
+  ];
+
+  const ladoB = [
+    { imagem: "https://via.placeholder.com/80?text=B1" },
+    { imagem: "https://via.placeholder.com/80?text=B2" },
+    { imagem: "https://via.placeholder.com/80?text=B3" },
+    { imagem: "https://via.placeholder.com/80?text=B4" },
+    { imagem: "https://via.placeholder.com/80?text=B5" }
+  ];
+
+  const opcoes = ["Selecione", "casa", "fora", "ambas marcas", "acima +2", "abaixo -2"];
+  const container = document.getElementById("containerApostas");
+
+  for (let i = 0; i < ladoA.length; i++) {
+    const div = document.createElement("div");
+    div.className = "duelo";
+    div.innerHTML = `
+      <img src="${ladoA[i].imagem}">
+      <select id="selectA-${i}">${opcoes.map(v => `<option value="${v}">${v}</option>`)}</select>
+      <strong>X</strong>
+      <select id="selectB-${i}">${opcoes.map(v => `<option value="${v}">${v}</option>`)}</select>
+      <img src="${ladoB[i].imagem}">
+    `;
+    container.appendChild(div);
+  }
+
+  // Impede marcar os dois lados ao mesmo tempo
+  for (let i = 0; i < ladoA.length; i++) {
+    const selectA = document.getElementById(`selectA-${i}`);
+    const selectB = document.getElementById(`selectB-${i}`);
+
+    selectA.addEventListener("change", () => {
+      selectB.disabled = selectA.value !== "Selecione";
+      if (selectA.value === "Selecione") selectB.disabled = false;
+    });
+
+    selectB.addEventListener("change", () => {
+      selectA.disabled = selectB.value !== "Selecione";
+      if (selectB.value === "Selecione") selectA.disabled = false;
+    });
+  }
+
+  const modal = document.getElementById("codigoModal");
+  const codigoTexto = document.getElementById("codigoAposta");
+  const btnCopiar = document.getElementById("btnCopiar");
+  const btnWhatsapp = document.getElementById("btnWhatsapp");
+  const btnPix = document.getElementById("btnPix");
+  const btnFechar = document.getElementById("btnFechar");
+  const chavePix = "71992290058"; // sua chave PIX real
+  let codigoGerado = "";
+
+  document.getElementById("apostarBtn").onclick = () => {
+    const apostas = [];
+
+    for (let i = 0; i < ladoA.length; i++) {
+      const porcA = document.getElementById(`selectA-${i}`).value;
+      const porcB = document.getElementById(`selectB-${i}`).value;
+
+      const duelo = {};
+      const ladoAValido = porcA && porcA !== "Selecione";
+      const ladoBValido = porcB && porcB !== "Selecione";
+
+      if (ladoAValido) duelo.ladoA = { imagem: ladoA[i].imagem, porcentagem: porcA };
+      if (ladoBValido) duelo.ladoB = { imagem: ladoB[i].imagem, porcentagem: porcB };
+
+      if (ladoAValido || ladoBValido) apostas.push(duelo);
+    }
+
+    if (apostas.length === 0) return alert("Marque pelo menos um lado!");
+
+    codigoGerado = Math.floor(100000 + Math.random() * 900000).toString();
+
+    set(ref(db, "apostas/" + codigoGerado), {
+      apostas,
+      data: new Date().toISOString()
+    });
+
+    codigoTexto.textContent = codigoGerado;
+    modal.style.display = "flex";
+  };
+
+  btnCopiar.onclick = () => {
+    navigator.clipboard.writeText(codigoGerado)
+      .then(() => alert("Código copiado!"))
+      .catch(() => alert("Permissão negada. Acesse via http://"));
+  };
+
+  btnPix.onclick = () => {
+    navigator.clipboard.writeText(chavePix)
+      .then(() => alert("Chave PIX copiada!"))
+      .catch(() => alert("Erro ao copiar PIX."));
+  };
+
+  btnWhatsapp.onclick = () => {
+    const msg = `Minha aposta foi registrada!\nCódigo: ${codigoGerado}\nPIX: ${chavePix}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  document.getElementById("btnFechar").onclick = () => {
+    modal.style.display = "none";
+  };
+</script>
+</body>
+</html>
