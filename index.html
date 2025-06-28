@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Nova Aposta</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
       font-family: sans-serif;
@@ -135,6 +135,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
 import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
+// Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyA5a-2HzvcljnAfXE7P3ThDnq6m6E568ZA",
   authDomain: "jogo-60a9e.firebaseapp.com",
@@ -144,80 +145,60 @@ const firebaseConfig = {
   appId: "1:352852303591:web:8083c950047c9026bd8c42",
   databaseURL: "https://jogo-60a9e-default-rtdb.firebaseio.com/"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// Dados dos jogos
 const ladoAImagens = [
   "https://raw.githubusercontent.com/Savanty/AE/main/botafogo.jpeg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/flamengo.jpeg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/atletico-mg.jpeg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/bahia.jpg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/vitoria.jpeg"
 ];
-
 const ladoBImagens = [
   "https://raw.githubusercontent.com/Savanty/AE/main/botafogo.jpeg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/flamengo.jpeg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/atletico-mg.jpeg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/bahia.jpg",
-  
   "https://raw.githubusercontent.com/Savanty/AE/main/santos.jpeg"
 ];
-
-function extrairNomeDoTime(url) {
-  const semQuery = url.split("?")[0];
-  const nomeArquivo = semQuery.split("/").pop();
-  const nomeBase = nomeArquivo.split(".")[0];
-  return nomeBase.charAt(0).toUpperCase() + nomeBase.slice(1).toLowerCase();
-}
-
 const horarios = [
-  "2025-06-27T22:00:00",
-  "2025-06-27T23:00:00",
-  "2025-06-28T00:00:00",
-  "2025-06-28T01:00:00",
-  "2025-06-28T02:00:00"
+  "2025-06-29T22:00:00",
+  "2025-06-29T23:00:00",
+  "2025-06-29T00:00:00",
+  "2025-06-29T01:00:00",
+  "2025-06-29T02:00:00"
 ];
 
+// Utilidades
+function extrairNomeDoTime(url) {
+  const nome = url.split("/").pop().split(".")[0];
+  return nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase();
+}
 const ladoA = ladoAImagens.map((url, i) => ({
   imagem: url,
   nome: extrairNomeDoTime(url),
   horario: horarios[i]
 }));
-
 const ladoB = ladoBImagens.map(url => ({
   imagem: url,
   nome: extrairNomeDoTime(url)
 }));
-
 const opcoes = ["casa", "fora", "ambas marcas", "acima +2", "abaixo -2"];
 const container = document.getElementById("containerApostas");
+const selects = [];
 
+// Criar interface dos jogos
 for (let i = 0; i < ladoA.length; i++) {
   const div = document.createElement("div");
   div.className = "duelo";
-
   const dataJogo = new Date(ladoA[i].horario);
   const agora = new Date();
   const bloqueado = agora > dataJogo;
 
-  const opcoesA = opcoes
-    .filter(v => v !== "fora")
-    .map(v => `<option value="${v}|${ladoA[i].nome}">${v} ${ladoA[i].nome}</option>`)
-    .join('');
-
-  const opcoesB = opcoes
-    .filter(v => v !== "casa")
-    .map(v => `<option value="${v}|${ladoB[i].nome}">${v} ${ladoB[i].nome}</option>`)
-    .join('');
+  const opcoesA = opcoes.filter(v => v !== "fora").map(v => `<option value="${v}|${ladoA[i].nome}">${v} ${ladoA[i].nome}</option>`).join('');
+  const opcoesB = opcoes.filter(v => v !== "casa").map(v => `<option value="${v}|${ladoB[i].nome}">${v} ${ladoB[i].nome}</option>`).join('');
 
   div.innerHTML = `
     <div class="linha-duelo">
@@ -233,36 +214,16 @@ for (let i = 0; i < ladoA.length; i++) {
       </select>
       <img src="${ladoB[i].imagem}" alt="${ladoB[i].nome}">
     </div>
-    <div style="margin-top: 4px;">
+    <div>
       <small><strong>Data/Hora:</strong> ${dataJogo.toLocaleString()}</small><br>
       ${bloqueado ? '<small style="color:red;font-weight:bold;">⚠️ Apostas encerradas para este jogo</small>' : ''}
     </div>
   `;
-
   container.appendChild(div);
-}
 
-for (let i = 0; i < ladoA.length; i++) {
-  const selectA = document.getElementById(`selectA-${i}`);
-  const selectB = document.getElementById(`selectB-${i}`);
-
-  const atualizarTotal = () => {
-    const valor = parseFloat(document.getElementById("valorUnico").value);
-    if (isNaN(valor) || valor <= 0) {
-      document.getElementById("totalFinal").textContent = "Total: R$ 0,00";
-      return;
-    }
-
-    let selecionados = 0;
-    for (let j = 0; j < ladoA.length; j++) {
-      const selA = document.getElementById(`selectA-${j}`).value;
-      const selB = document.getElementById(`selectB-${j}`).value;
-      if (selA !== "Selecione" || selB !== "Selecione") selecionados++;
-    }
-
-    const total = valor * 2 * selecionados;
-    document.getElementById("totalFinal").textContent = `Total: R$ ${total.toFixed(2)}`;
-  };
+  const selectA = div.querySelector(`#selectA-${i}`);
+  const selectB = div.querySelector(`#selectB-${i}`);
+  selects.push({ selectA, selectB });
 
   selectA.addEventListener("change", () => {
     selectB.disabled = selectA.value !== "Selecione";
@@ -275,11 +236,27 @@ for (let i = 0; i < ladoA.length; i++) {
     if (selectB.value === "Selecione") selectA.disabled = false;
     atualizarTotal();
   });
-
-  document.getElementById("valorUnico").addEventListener("input", atualizarTotal);
 }
 
-// -------------------- APOSTA --------------------------
+// Atualizar total
+function atualizarTotal() {
+  const valorDigitado = parseFloat(document.getElementById("valorUnico").value);
+  if (isNaN(valorDigitado) || valorDigitado <= 0) {
+    document.getElementById("totalFinal").textContent = "Total: R$ 0,00";
+    return;
+  }
+
+  let total = 0;
+  selects.forEach(({ selectA, selectB }) => {
+    if (selectA.value !== "Selecione") total += valorDigitado * 2;
+    if (selectB.value !== "Selecione") total += valorDigitado * 3;
+  });
+
+  document.getElementById("totalFinal").textContent = `Total: R$ ${total.toFixed(2)}`;
+}
+document.getElementById("valorUnico").addEventListener("input", atualizarTotal);
+
+// Apostar
 const modal = document.getElementById("codigoModal");
 const codigoTexto = document.getElementById("codigoAposta");
 const btnCopiar = document.getElementById("btnCopiar");
@@ -292,9 +269,8 @@ let codigoGerado = "";
 document.getElementById("apostarBtn").onclick = () => {
   const nome = document.getElementById("nomeJogador").value.trim();
   const valorUnico = parseFloat(document.getElementById("valorUnico").value);
-
   if (!nome) return alert("Digite seu nome!");
-  if (isNaN(valorUnico) || valorUnico <= 0) return alert("Digite um valor válido para a aposta!");
+  if (isNaN(valorUnico) || valorUnico <= 0) return alert("Digite um valor válido!");
 
   const apostas = [];
   let totalFinal = 0;
@@ -303,16 +279,20 @@ document.getElementById("apostarBtn").onclick = () => {
     const porcA = document.getElementById(`selectA-${i}`).value;
     const porcB = document.getElementById(`selectB-${i}`).value;
 
-    const ladoAValido = porcA && porcA !== "Selecione";
-    const ladoBValido = porcB && porcB !== "Selecione";
+    const ladoAValido = porcA !== "Selecione";
+    const ladoBValido = porcB !== "Selecione";
+
+    let valorDuelo = 0;
+    if (ladoAValido) valorDuelo += valorUnico * 2;
+    if (ladoBValido) valorDuelo += valorUnico * 3;
 
     if (ladoAValido || ladoBValido) {
-      const duelo = {
+      apostas.push({
         nomeTimeA: ladoA[i].nome,
         nomeTimeB: ladoB[i].nome,
         dataHora: ladoA[i].horario,
         valorDigitado: valorUnico,
-        valorTotalDuelo: valorUnico * 2,
+        valorTotalDuelo: valorDuelo,
         selecaoA: ladoAValido ? {
           tipo: porcA.split("|")[0],
           time: porcA.split("|")[1],
@@ -323,68 +303,62 @@ document.getElementById("apostarBtn").onclick = () => {
           time: porcB.split("|")[1],
           texto: porcB
         } : null
-      };
-
-      totalFinal += duelo.valorTotalDuelo;
-      apostas.push(duelo);
+      });
+      totalFinal += valorDuelo;
     }
   }
 
-  if (apostas.length === 0) {
-    alert("Marque pelo menos um lado!");
-    return;
-  }
+  if (apostas.length === 0) return alert("Marque pelo menos uma opção!");
 
   codigoGerado = Math.floor(100000 + Math.random() * 900000).toString();
 
- set(ref(db, "apostas/" + codigoGerado), {
-  nome,
-  valorDigitado: valorUnico,
-  valorTotal: totalFinal,
-  dataRegistro: new Date().toISOString(),
-  duelos: apostas.map(a => ({
-    duelo: `${a.nomeTimeA} x ${a.nomeTimeB}`,
-    selecaoA: a.selecaoA?.texto || null,
-    selecaoB: a.selecaoB?.texto || null,
-    dataHora: a.dataHora,
-    valorUnico: a.valorDigitado,
-    valorDuelo: a.valorTotalDuelo
-  }))
-})
-.then(() => {
-  console.log("Aposta salva com sucesso!");
-})
-.catch((error) => {
-  console.error("Erro ao salvar aposta:", error);
-  alert("Erro ao salvar no Firebase: " + error.message);
-});
+  set(ref(db, "apostas/" + codigoGerado), {
+    nome,
+    valorDigitado: valorUnico,
+    valorTotal: totalFinal,
+    dataRegistro: new Date().toISOString(),
+    duelos: apostas.map(a => ({
+      duelo: `${a.nomeTimeA} x ${a.nomeTimeB}`,
+      selecaoA: a.selecaoA?.texto || null,
+      selecaoB: a.selecaoB?.texto || null,
+      dataHora: a.dataHora,
+      valorUnico: a.valorDigitado,
+      valorDuelo: a.valorTotalDuelo
+    }))
+  }).then(() => {
+    // Resetar campos
+    document.getElementById("nomeJogador").value = "";
+    document.getElementById("valorUnico").value = "";
+    selects.forEach(({ selectA, selectB }) => {
+      selectA.value = "Selecione";
+      selectB.value = "Selecione";
+      selectA.disabled = false;
+      selectB.disabled = false;
+    });
+    atualizarTotal();
+  }).catch((error) => {
+    alert("Erro ao salvar aposta: " + error.message);
+  });
+
   codigoTexto.textContent = `${codigoGerado} - Total: R$ ${totalFinal.toFixed(2)}`;
   modal.style.display = "flex";
 };
 
+// Modal
 btnCopiar.onclick = () => {
-  navigator.clipboard.writeText(codigoGerado)
-    .then(() => alert("Código copiado!"))
-    .catch(() => alert("Permissão negada."));
+  navigator.clipboard.writeText(codigoGerado).then(() => alert("Código copiado!"));
 };
-
 btnPix.onclick = () => {
-  navigator.clipboard.writeText(chavePix)
-    .then(() => alert("Chave PIX copiada!"))
-    .catch(() => alert("Erro ao copiar PIX."));
+  navigator.clipboard.writeText(chavePix).then(() => alert("PIX copiado!"));
 };
-
 btnWhatsapp.onclick = () => {
   const nome = document.getElementById("nomeJogador").value.trim();
-  const msg = `Minha aposta foi registrada!\nNome: ${nome}\nCódigo: ${codigoGerado}\nPIX: ${chavePix}`;
+  const msg = `✅ Minha aposta foi registrada!\n🧍 Nome: ${nome}\n🔢 Código: ${codigoGerado}\n💰 PIX: ${chavePix}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
 };
-
 btnFechar.onclick = () => {
   modal.style.display = "none";
 };
-
-  </script>
-
+</script>
 </body>
-</html> 
+</html>  
